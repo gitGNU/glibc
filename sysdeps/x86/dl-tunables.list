@@ -1,0 +1,9 @@
+glibc {
+  x86 {
+    ifunc {
+      type: STRING
+      env_alias: GLIBC_IFUNC
+      security_level: SXID_IGNORE
+    }
+  }
+}

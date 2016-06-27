@@ -20,6 +20,19 @@
 #include <cpu-features.h>
 #include <dl-hwcap.h>
 
+#if HAVE_TUNABLES
+# define TUNABLE_NAMESPACE x86
+# include <elf/dl-tunables.h>
+
+extern void DL_TUNABLE_CALLBACK (set_ifunc) (tunable_val_t *)
+  attribute_hidden;
+#else
+# include <string.h>
+# include <unistd.h>
+extern char **__environ attribute_hidden;
+extern void _dl_x86_set_ifunc (const char *) attribute_hidden;
+#endif
+
 static void
 get_common_indeces (struct cpu_features *cpu_features,
 		    unsigned int *family, unsigned int *model,
@@ -311,6 +324,29 @@ no_cpuid:
   cpu_features->family = family;
   cpu_features->model = model;
   cpu_features->kind = kind;
+
+#if HAVE_TUNABLES
+  TUNABLE_SET_VAL_WITH_CALLBACK (ifunc, NULL, set_ifunc);
+#else
+  if (__glibc_likely (__environ != NULL)
+      && !__builtin_expect (__libc_enable_secure, 0))
+    {
+      char **runp = __environ;
+      char *envline;
+
+      while (*runp != NULL)
+	{
+	  envline = *runp;
+	  if (!DEFAULT_MEMCMP (envline, "GLIBC_IFUNC=",
+			       sizeof ("GLIBC_IFUNC=") - 1))
+	  {
+	    _dl_x86_set_ifunc (envline + sizeof ("GLIBC_IFUNC=") - 1);
+	    break;
+	  }
+	  runp++;
+	}
+    }
+#endif
 
 #if IS_IN (rtld)
   /* Reuse dl_platform, dl_hwcap and dl_hwcap_mask for x86.  */

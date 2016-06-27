@@ -240,6 +240,18 @@ extern const struct cpu_features *__get_cpu_features (void)
 #  define __get_cpu_features()	(&GLRO(dl_x86_cpu_features))
 # endif
 
+/* We can't use IFUNC memcmp in init_cpu_features from libc.a since
+   IFUNC must be set up by init_cpu_features.  */
+# if defined USE_MULTIARCH && !defined SHARED
+#  ifdef __x86_64__
+#   define DEFAULT_MEMCMP	__memcmp_sse2
+#  else
+#   define DEFAULT_MEMCMP	__memcmp_ia32
+#  endif
+extern __typeof (memcmp) DEFAULT_MEMCMP;
+# else
+#  define DEFAULT_MEMCMP	memcmp
+# endif
 
 /* Only used directly in cpu-features.c.  */
 # define CPU_FEATURES_CPU_P(ptr, name) \
